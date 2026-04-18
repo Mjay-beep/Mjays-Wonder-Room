@@ -3,14 +3,14 @@
     {
       "id": "sun-earth-combined",
       "title": "태양과 지구 · 계절과 일사량 시뮬레이션",
-      "description": "3D 공전 시뮬레이션과 위도별 태양 고도 2D 뷰를 탭으로 전환하며 관찰. 자전축 기울기·계절·일사량 변화를 함께 이해할 수 있습니다.",
+      "description": "3D 공전 시뮬레이션과 위도별 태양 고도 분석을 탭으로 전환하며 살펴볼 수 있는 통합 시뮬레이션. 5개 국가 바로가기, 계절 이동, 태양광선 시각화 포함.",
       "subjects": ["천문학", "지구과학"],
       "tags": ["3D", "2D", "인터랙티브"],
-      "file": "works/sun-earth-combined.html",
-      "date": "2026-04-18",
-      "emoji": "🌍",
-      "color": "#1a3a5a",
-      "note": ""
+      "file": "works/2026-04-19_sun-earth-combined.html",
+      "date": "2026-04-19",
+      "emoji": "🌞",
+      "color": "#2a3a5a",
+      "note": "기존 2D/3D 버전을 통합한 개정판"
     }
   ]
 }
