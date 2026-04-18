@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>우리 은하 속 태양계 · Galaxy & Solar System</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #000004;
+    --panel: rgba(14, 14, 22, 0.85);
+    --border: rgba(255, 255, 255, 0.1);
+    --border-hover: rgba(255, 170, 0, 0.4);
+    --text: #e8e8f0;
+    --text-dim: #8a8a9a;
+    --accent: #ffaa00;
+    --accent-dim: rgba(255, 170, 0, 0.15);
+    --blue: #5aa0ff;
+  }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    background: var(--bg); color: var(--text);
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+    -webkit-font-smoothing: antialiased; user-select: none;
+  }
+  #canvas-container { position: fixed; inset: 0; z-index: 0; cursor: grab; }
+  #canvas-container:active { cursor: grabbing; }
+
+  .top-bar {
+    position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+    background: var(--panel); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--border); border-radius: 100px;
+    padding: 10px 24px; z-index: 20;
+    font-size: 0.95rem; font-weight: 600; white-space: nowrap;
+  }
+
+  .ui-panel {
+    position: fixed; background: var(--panel);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px; z-index: 10; color: var(--text);
+  }
+  .left-panel { top: 72px; left: 16px; width: 280px; max-height: calc(100vh - 180px); overflow-y: auto; }
+  .right-hud  { top: 72px; right: 16px; width: 230px; }
+  .timeline   { bottom: 16px; left: 50%; transform: translateX(-50%); width: min(760px, calc(100vw - 32px)); padding: 14px 20px; }
+
+  .section { margin-bottom: 14px; }
+  .section:last-child { margin-bottom: 0; }
+  .section-label {
+    font-size: 0.7rem; font-weight: 700; color: var(--text-dim);
+    text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px;
+  }
+
+  .playback { display: flex; gap: 6px; align-items: center; }
+  .play-btn {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: var(--accent-dim); border: 1px solid var(--accent);
+    color: var(--accent); cursor: pointer; font-size: 1rem;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s; font-family: inherit;
+  }
+  .play-btn:hover { background: var(--accent); color: #000; }
+  .speed-select {
+    flex: 1; padding: 8px 10px;
+    background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); font-family: inherit; font-size: 0.82rem;
+  }
+
+  .era-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .era-btn {
+    padding: 8px 10px; background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); cursor: pointer; font-family: inherit;
+    font-size: 0.76rem; text-align: left; transition: all 0.15s;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .era-btn:hover { border-color: var(--border-hover); background: rgba(255, 170, 0, 0.08); }
+  .era-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+
+  .deep-era-list { display: flex; flex-direction: column; gap: 5px; }
+  .deep-era-btn {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 10px; background: rgba(120, 140, 255, 0.05);
+    border: 1px solid rgba(120, 140, 255, 0.18); border-radius: 8px;
+    color: var(--text); cursor: pointer; font-family: inherit;
+    font-size: 0.76rem; text-align: left; transition: all 0.15s;
+    gap: 8px;
+  }
+  .deep-era-btn:hover { border-color: rgba(120, 140, 255, 0.5); background: rgba(120, 140, 255, 0.1); }
+  .deep-era-btn.active { background: rgba(120, 140, 255, 0.18); border-color: #8aa0ff; color: #c0cfff; }
+  .deep-era-label { font-weight: 600; white-space: nowrap; }
+  .deep-era-meta {
+    font-size: 0.68rem; color: var(--text-dim); text-align: right;
+    font-variant-numeric: tabular-nums; line-height: 1.3;
+  }
+  .deep-era-meta .orbits { color: #8aa0ff; font-weight: 600; }
+  .deep-era-note {
+    font-size: 0.68rem; color: var(--text-dim);
+    margin-bottom: 6px; line-height: 1.4;
+  }
+
+  .toggle {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 0; font-size: 0.82rem; cursor: pointer;
+  }
+  .toggle input { display: none; }
+  .toggle-track {
+    width: 32px; height: 18px; background: rgba(255,255,255,0.12);
+    border-radius: 100px; position: relative; transition: background 0.15s;
+    flex-shrink: 0;
+  }
+  .toggle-track::before {
+    content: ''; position: absolute; top: 2px; left: 2px;
+    width: 14px; height: 14px; background: #fff;
+    border-radius: 50%; transition: transform 0.15s;
+  }
+  .toggle input:checked + .toggle-track { background: var(--accent); }
+  .toggle input:checked + .toggle-track::before { transform: translateX(14px); }
+
+  .hud-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 5px 0; font-size: 0.8rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .hud-row:last-child { border-bottom: none; }
+  .hud-label { color: var(--text-dim); }
+  .hud-value { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  .timeline-slider-wrap {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 8px;
+  }
+  .slider {
+    flex: 1; -webkit-appearance: none; appearance: none;
+    height: 6px; background: rgba(255,255,255,0.1);
+    border-radius: 100px; outline: none;
+  }
+  .slider::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 18px; height: 18px; background: var(--accent);
+    border-radius: 50%; cursor: pointer;
+    box-shadow: 0 0 8px rgba(255,170,0,0.5);
+  }
+  .slider::-moz-range-thumb {
+    width: 18px; height: 18px; background: var(--accent);
+    border-radius: 50%; cursor: pointer; border: none;
+  }
+  .timeline-readout {
+    display: flex; justify-content: space-between;
+    font-size: 0.78rem; color: var(--text-dim);
+  }
+  .timeline-readout strong {
+    color: var(--accent); font-variant-numeric: tabular-nums;
+  }
+
+  .tooltip {
+    position: fixed; background: rgba(0,0,0,0.92);
+    border: 1px solid var(--accent); padding: 8px 12px;
+    border-radius: 8px; font-size: 0.8rem;
+    z-index: 100; pointer-events: none; max-width: 240px; display: none;
+  }
+  .tooltip-name { font-weight: 700; color: var(--accent); margin-bottom: 3px; }
+  .tooltip-meta { color: var(--text-dim); font-size: 0.72rem; line-height: 1.4; }
+
+  .hint {
+    position: fixed; bottom: 120px; left: 50%; transform: translateX(-50%);
+    font-size: 0.75rem; color: var(--text-dim);
+    background: rgba(0,0,0,0.5); padding: 5px 12px;
+    border-radius: 100px; z-index: 9; pointer-events: none;
+  }
+
+  .loading {
+    position: fixed; inset: 0; display: flex;
+    align-items: center; justify-content: center;
+    background: var(--bg); z-index: 1000;
+    color: var(--accent); font-size: 1.1rem; font-weight: 600;
+  }
+
+  .label-html {
+    position: fixed; pointer-events: none;
+    z-index: 5; white-space: nowrap;
+    font-weight: 600;
+    text-shadow: 0 0 6px rgba(0,0,0,0.95), 0 0 3px rgba(0,0,0,1);
+  }
+  .label-star   { font-size: 11px; }
+  .label-arm    { font-size: 13px; font-weight: 700; opacity: 0.85; }
+  .label-planet { font-size: 10px; }
+  .label-sun    { font-size: 12px; color: #ffcc44; }
+
+  @media (max-width: 900px) {
+    .right-hud { display: none; }
+  }
+  @media (max-width: 600px) {
+    .top-bar { font-size: 0.82rem; padding: 8px 16px; }
+    .left-panel {
+      top: 56px; left: 8px; right: 8px; width: auto;
+      max-height: 42vh;
+    }
+    .timeline { padding: 10px 14px; bottom: 8px; }
+    .hint { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div id="canvas-container"></div>
+
+<div class="top-bar">🌌 우리 은하 속 태양계</div>
+
+<div class="ui-panel left-panel">
+  <div class="section">
+    <div class="section-label">재생 제어</div>
+    <div class="playback">
+      <button class="play-btn" id="playBtn">▶</button>
+      <select class="speed-select" id="speedSel">
+        <option value="1000000">느림 (100만년/초)</option>
+        <option value="10000000" selected>보통 (1000만년/초)</option>
+        <option value="100000000">빠름 (1억년/초)</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">심원 시간 (슬라이더 밖)</div>
+    <div class="deep-era-note">슬라이더는 캄브리아(5.4억 년 전) 이후만 다룹니다. 그보다 먼 과거는 아래 버튼으로 이동하세요.</div>
+    <div class="deep-era-list" id="deepEraList"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">시대 바로가기 · 캄브리아 이후</div>
+    <div class="era-grid" id="eraGrid"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">카메라 뷰</div>
+    <div class="era-grid">
+      <button class="era-btn" id="viewGalaxy">🌌 은하 전체</button>
+      <button class="era-btn" id="viewSolar">☀️ 태양계</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">표시 옵션</div>
+    <label class="toggle"><span>행성 궤도 링</span>
+      <input type="checkbox" id="tglOrbits" checked><span class="toggle-track"></span>
+    </label>
+    <label class="toggle"><span>나선(소용돌이) 궤적</span>
+      <input type="checkbox" id="tglHelix" checked><span class="toggle-track"></span>
+    </label>
+    <label class="toggle"><span>별 이름 레이블</span>
+      <input type="checkbox" id="tglLabels" checked><span class="toggle-track"></span>
+    </label>
+    <label class="toggle"><span>은하 중심 거리선</span>
+      <input type="checkbox" id="tglRadius"><span class="toggle-track"></span>
+    </label>
+    <label class="toggle"><span>태양 공전 궤도</span>
+      <input type="checkbox" id="tglSunOrbit" checked><span class="toggle-track"></span>
+    </label>
+  </div>
+</div>
+
+<div class="ui-panel right-hud">
+  <div class="section">
+    <div class="section-label">현재 상태</div>
+    <div class="hud-row"><span class="hud-label">시점</span><span class="hud-value" id="hudTime">현재</span></div>
+    <div class="hud-row"><span class="hud-label">은하 공전</span><span class="hud-value" id="hudOrbits">0.00 회</span></div>
+    <div class="hud-row"><span class="hud-label">위상각</span><span class="hud-value" id="hudAngle">0°</span></div>
+    <div class="hud-row"><span class="hud-label">은하중심까지</span><span class="hud-value">26,700 ly</span></div>
+    <div class="hud-row"><span class="hud-label">공전 속도</span><span class="hud-value">~230 km/s</span></div>
+    <div class="hud-row"><span class="hud-label">은하년</span><span class="hud-value">2.3억 년</span></div>
+    <div class="hud-row"><span class="hud-label">은하 내 별 수</span><span class="hud-value">~4,000억 개</span></div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">카메라</div>
+    <div class="hud-row"><span class="hud-label">거리</span><span class="hud-value" id="hudCam">—</span></div>
+    <div class="hud-row"><span class="hud-label">뷰</span><span class="hud-value" id="hudView">은하</span></div>
+  </div>
+</div>
+
+<div class="ui-panel timeline">
+  <div class="timeline-slider-wrap">
+    <span style="font-size:0.75rem;color:var(--text-dim);min-width:72px;text-align:right">7억 년 전</span>
+    <input type="range" class="slider" id="timeSlider" min="-700000000" max="100000000" step="100000" value="0">
+    <span style="font-size:0.75rem;color:var(--text-dim);min-width:48px">+1억 년</span>
+  </div>
+  <div class="timeline-readout">
+    <div><strong id="tlTime">현재</strong></div>
+    <div>누적 이동 <strong id="tlDist">0 ly</strong> · 공전 <strong id="tlOrbits">0.00</strong>회</div>
+  </div>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+<div class="hint" id="hint">마우스 휠: 줌 · 드래그: 회전 · 시대 버튼이나 슬라이더로 시간 이동</div>
+<div class="loading" id="loading">🌌 은하를 불러오는 중…</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script>
+(function(){
+  // ============================================================
+  // CONSTANTS
+  // ============================================================
+  const AU_IN_LY = 1.5813e-5;
+  const R_GAL = 26700;              // Sun-GC distance, ly
+  const GAL_PERIOD = 230e6;         // years per galactic orbit
+  const OMEGA_GAL = (Math.PI * 2) / GAL_PERIOD;
+  const GAL_DIAMETER = 100000;
+  const ECLIPTIC_TILT = 60.2 * Math.PI / 180;  // ecliptic vs galactic plane
+
+  // Solar system visual scale: exaggerate so Neptune (30 AU) shows at ~1 ly visually.
+  // This means stars at 4+ ly remain farther out as labeled (compressed but ordered).
+  const SOLAR_VIS_SCALE = 0.03;  // 1 AU = 0.03 ly visual
+
+  // Planets
+  const PLANETS = [
+    { name:'수성',   nameEn:'Mercury', a:0.387, period:0.241,  color:0xb8b0a0, size:0.35 },
+    { name:'금성',   nameEn:'Venus',   a:0.723, period:0.615,  color:0xf0d080, size:0.45 },
+    { name:'지구',   nameEn:'Earth',   a:1.000, period:1.000,  color:0x4a9aff, size:0.48 },
+    { name:'화성',   nameEn:'Mars',    a:1.524, period:1.881,  color:0xe06030, size:0.40 },
+    { name:'목성',   nameEn:'Jupiter', a:5.203, period:11.86,  color:0xd0b080, size:1.2  },
+    { name:'토성',   nameEn:'Saturn',  a:9.537, period:29.46,  color:0xe8c888, size:1.0, ring:true },
+    { name:'천왕성', nameEn:'Uranus',  a:19.19, period:84.01,  color:0x80d0e0, size:0.7  },
+    { name:'해왕성', nameEn:'Neptune', a:30.07, period:164.8,  color:0x3060d0, size:0.7  }
+  ];
+
+  // Geological eras · within-slider range (yearsAgo ≤ 700M)
+  const ERAS = [
+    { id:'now',      label:'🌍 현재',         yearsAgo:0,          desc:'2026년 기준' },
+    { id:'human',    label:'👤 인류',         yearsAgo:300000,     desc:'호모 사피엔스 (30만 년 전)' },
+    { id:'ice',      label:'🦣 빙하기',       yearsAgo:20000,      desc:'마지막 최대 빙하기' },
+    { id:'kpg',      label:'💥 공룡멸종',     yearsAgo:66000000,   desc:'K-Pg 대멸종 (6,600만 년 전)' },
+    { id:'jurassic', label:'🦕 쥬라기',       yearsAgo:150000000,  desc:'쥬라기 중기 (1.5억 년 전)' },
+    { id:'pangaea',  label:'🌋 판게아',       yearsAgo:335000000,  desc:'판게아 형성 (3.35억 년 전)' },
+    { id:'cambrian', label:'🐟 캄브리아',     yearsAgo:540000000,  desc:'캄브리아 폭발 (5.4억 년 전)' }
+  ];
+
+  // Deep-time eras · beyond slider (displayed separately with orbit counts)
+  const ERAS_DEEP = [
+    { id:'life',  label:'🦠 최초 생명',    yearsAgo:3800000000, desc:'LUCA · 38억 년 전' },
+    { id:'earth', label:'🌎 지구 형성',    yearsAgo:4540000000, desc:'원시 지구 · 45.4억 년 전' },
+    { id:'sun',   label:'☀️ 태양 탄생',    yearsAgo:4600000000, desc:'태양계 기원 · 46억 년 전' }
+  ];
+
+  // Slider min — anything below clamps to this (buttons still jump state.time to actual value)
+  const TIME_SLIDER_MIN = -700000000;
+
+  // Named nearby stars & clusters. `dist` is real distance in ly from Sun.
+  // Positions are deterministically spread around sun; labels show true distance.
+  const NAMED_STARS = [
+    { name:'프록시마 센타우리',  dist:4.25,  color:0xff6644, type:'M5.5 (적색왜성)' },
+    { name:'알파 센타우리',      dist:4.37,  color:0xfff4d8, type:'G2V (태양형)' },
+    { name:'바너드 별',          dist:5.96,  color:0xff8855, type:'M4.0 Ve' },
+    { name:'시리우스',           dist:8.6,   color:0xdde8ff, type:'A1V (가장 밝은 별)' },
+    { name:'프로키온',           dist:11.4,  color:0xfff4e0, type:'F5 IV-V' },
+    { name:'알타이르 (견우성)',  dist:16.7,  color:0xe8eeff, type:'A7V' },
+    { name:'포말하우트',         dist:25.1,  color:0xe0e8ff, type:'A4V' },
+    { name:'베가 (직녀성)',      dist:25.0,  color:0xc8d8ff, type:'A0V' },
+    { name:'아크투루스',         dist:36.7,  color:0xffa060, type:'K1.5 III' },
+    { name:'폴룩스',             dist:33.8,  color:0xffb888, type:'K0 III' },
+    { name:'카펠라',             dist:42.9,  color:0xfff0c0, type:'G8 III' },
+    { name:'알데바란',           dist:65.1,  color:0xff8040, type:'K5 III (황소자리)' },
+    { name:'레굴루스',           dist:79.3,  color:0xe0e8ff, type:'B8 IVn (사자자리)' },
+    { name:'북극성 (폴라리스)',  dist:433,   color:0xfff0d0, type:'F7 Ib 초거성' },
+    { name:'플레이아데스',       dist:444,   color:0x8090ff, type:'산개성단', cluster:true },
+    { name:'안타레스',           dist:550,   color:0xff4020, type:'M1.5 적색초거성' },
+    { name:'베텔게우스',         dist:548,   color:0xff5020, type:'M1-M2 Ia (오리온)' },
+    { name:'리겔',               dist:863,   color:0xc0d8ff, type:'B8 Ia (오리온)' },
+    { name:'오리온 성운',        dist:1344,  color:0xff80a0, type:'발광 성운', cluster:true },
+    { name:'데네브',             dist:2615,  color:0xe0e8ff, type:'A2 Ia 초거성 (백조)' }
+  ];
+
+  function seededRng(seed){ let s=seed; return ()=>{s=(s*9301+49297)%233280; return s/233280;}; }
+  // Spread stars around sun, biased near galactic plane
+  const rng0 = seededRng(42);
+  NAMED_STARS.forEach(st => {
+    const theta = rng0() * Math.PI * 2;
+    const phi = (rng0() - 0.5) * 0.35;  // near galactic plane
+    st.dir = new THREE.Vector3(
+      Math.cos(theta) * Math.cos(phi),
+      Math.sin(phi),
+      Math.sin(theta) * Math.cos(phi)
+    );
+  });
+
+  // Galactic arm labels (approximate, for orientation)
+  const ARM_LABELS = [
+    { name:'오리온 팔 (우리 위치)', pos:[R_GAL, 0, 0],                color:'#ffaa00' },
+    { name:'궁수자리 팔',            pos:[R_GAL * 0.55, 0, 13000],    color:'#aaccff' },
+    { name:'페르세우스 팔',          pos:[-R_GAL * 0.3, 0, -R_GAL*1.3], color:'#aaccff' },
+    { name:'카리나-방패 팔',         pos:[R_GAL * 0.35, 0, -15000],   color:'#aaccff' },
+    { name:'은하 중심 (Sgr A*)',     pos:[0, 0, 0],                   color:'#ff5050' }
+  ];
+
+  // ============================================================
+  // STATE
+  // ============================================================
+  const state = {
+    time: 0, playing: false, speed: 10000000,
+    currentEra: 'now',
+    showOrbits: true, showHelix: true, showLabels: true, showRadius: false, showSunOrbit: true,
+    viewMode: 'galaxy'
+  };
+
+  // ============================================================
+  // THREE SETUP
+  // ============================================================
+  const container = document.getElementById('canvas-container');
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x000004);
+
+  const camera = new THREE.PerspectiveCamera(
+    55, window.innerWidth/window.innerHeight, 0.0001, 500000
+  );
+
+  const renderer = new THREE.WebGLRenderer({ antialias:true, logarithmicDepthBuffer:true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  container.appendChild(renderer.domElement);
+
+  // Custom orbit camera
+  const target = new THREE.Vector3(R_GAL, 0, 0);
+  const sph = new THREE.Spherical(130000, 0.7, 0.4);  // start far
+
+  function applyCam(){
+    const offset = new THREE.Vector3().setFromSpherical(sph);
+    camera.position.copy(target).add(offset);
+    camera.up.set(0,1,0);
+    camera.lookAt(target);
+  }
+  applyCam();
+
+  let dragging=false, lastX=0, lastY=0;
+  const canvasEl = renderer.domElement;
+  canvasEl.addEventListener('mousedown', e=>{ dragging=true; lastX=e.clientX; lastY=e.clientY; });
+  window.addEventListener('mouseup', ()=>{ dragging=false; });
+  window.addEventListener('mousemove', e=>{
+    handleHover(e);
+    if(!dragging) return;
+    const dx=e.clientX-lastX, dy=e.clientY-lastY;
+    lastX=e.clientX; lastY=e.clientY;
+    sph.theta -= dx*0.005;
+    sph.phi   -= dy*0.005;
+    sph.phi = Math.max(0.01, Math.min(Math.PI-0.01, sph.phi));
+    applyCam();
+  });
+  canvasEl.addEventListener('wheel', e=>{
+    e.preventDefault();
+    const factor = Math.exp(e.deltaY * 0.0012);
+    sph.radius = Math.max(0.00003, Math.min(180000, sph.radius * factor));
+    applyCam();
+  }, { passive:false });
+
+  // Touch
+  let touchDrag=false, tLastX=0, tLastY=0, pinch=0;
+  canvasEl.addEventListener('touchstart', e=>{
+    if(e.touches.length===1){ touchDrag=true; tLastX=e.touches[0].clientX; tLastY=e.touches[0].clientY; }
+    else if(e.touches.length===2){
+      touchDrag=false;
+      const dx=e.touches[0].clientX-e.touches[1].clientX;
+      const dy=e.touches[0].clientY-e.touches[1].clientY;
+      pinch=Math.hypot(dx,dy);
+    }
+  }, {passive:true});
+  canvasEl.addEventListener('touchmove', e=>{
+    e.preventDefault();
+    if(touchDrag && e.touches.length===1){
+      const dx=e.touches[0].clientX-tLastX, dy=e.touches[0].clientY-tLastY;
+      tLastX=e.touches[0].clientX; tLastY=e.touches[0].clientY;
+      sph.theta -= dx*0.005;
+      sph.phi   -= dy*0.005;
+      sph.phi = Math.max(0.01, Math.min(Math.PI-0.01, sph.phi));
+      applyCam();
+    } else if(e.touches.length===2){
+      const dx=e.touches[0].clientX-e.touches[1].clientX;
+      const dy=e.touches[0].clientY-e.touches[1].clientY;
+      const nd=Math.hypot(dx,dy);
+      if(pinch>0){
+        sph.radius = Math.max(0.00003, Math.min(180000, sph.radius * (pinch/nd)));
+        applyCam();
+      }
+      pinch=nd;
+    }
+  }, {passive:false});
+  canvasEl.addEventListener('touchend', ()=>{ touchDrag=false; pinch=0; });
+
+  // ============================================================
+  // TEXTURES
+  // ============================================================
+  function starTexture(){
+    const c = document.createElement('canvas'); c.width=c.height=64;
+    const ctx = c.getContext('2d');
+    const g = ctx.createRadialGradient(32,32,0,32,32,32);
+    g.addColorStop(0,'rgba(255,255,255,1)');
+    g.addColorStop(0.25,'rgba(255,255,255,0.7)');
+    g.addColorStop(0.55,'rgba(255,255,255,0.15)');
+    g.addColorStop(1,'rgba(255,255,255,0)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,64,64);
+    return new THREE.CanvasTexture(c);
+  }
+  const STAR_TEX = starTexture();
+
+  // ============================================================
+  // GALAXY — realistic-ish appearance (point core + bar + 2+2 spiral arms)
+  // ============================================================
+  // Galactic center: diffuse glow (outer) + tight glow (inner) + Sgr A* point
+  const bulgeOuter = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: STAR_TEX, color:0xffd890, transparent:true, opacity:0.45,
+    blending: THREE.AdditiveBlending, depthWrite:false
+  }));
+  bulgeOuter.scale.set(12000, 12000, 1);
+  scene.add(bulgeOuter);
+
+  const bulgeInner = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: STAR_TEX, color:0xfff0c0, transparent:true, opacity:0.9,
+    blending: THREE.AdditiveBlending, depthWrite:false
+  }));
+  bulgeInner.scale.set(3500, 3500, 1);
+  scene.add(bulgeInner);
+
+  // Sgr A* as a tiny bright point (sprite — always faces camera, scales naturally)
+  const sgrA = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: STAR_TEX, color:0xffffff, transparent:true, opacity:1,
+    blending: THREE.AdditiveBlending, depthWrite:false
+  }));
+  sgrA.scale.set(400, 400, 1);
+  scene.add(sgrA);
+
+  // Galactic bar — elongated star concentration through center (~27,000 ly long IRL)
+  function makeBar(count){
+    const pos = new Float32Array(count*3);
+    const col = new Float32Array(count*3);
+    const rng = seededRng(21);
+    const barLength = 13000;  // half-length (so 26,000 total)
+    const barWidth  = 2200;
+    const barHeight = 900;
+    const barAngle  = 0.47;   // ~27° tilt, similar to real Milky Way bar
+    const ca = Math.cos(barAngle), sa = Math.sin(barAngle);
+    for(let i=0;i<count;i++){
+      // Sample inside an elongated ellipsoid with density peaking at center
+      const u = (rng()*2-1);
+      const x0 = Math.sign(u) * Math.pow(Math.abs(u), 1.3) * barLength;
+      const z0 = (rng()*2-1) * barWidth * (1 - Math.abs(x0)/barLength * 0.7);
+      const y0 = (rng()*2-1) * barHeight * (1 - Math.abs(x0)/barLength * 0.5);
+      // Rotate in XZ plane
+      const x = x0*ca - z0*sa;
+      const z = x0*sa + z0*ca;
+      pos[i*3]=x; pos[i*3+1]=y0; pos[i*3+2]=z;
+      // Yellow-orange older population
+      const c = new THREE.Color().setHSL(0.10 + rng()*0.03, 0.55, 0.55 + rng()*0.2);
+      col[i*3]=c.r; col[i*3+1]=c.g; col[i*3+2]=c.b;
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos,3));
+    g.setAttribute('color',    new THREE.BufferAttribute(col,3));
+    return new THREE.Points(g, new THREE.PointsMaterial({
+      size: 110, vertexColors:true, transparent:true, opacity:0.85,
+      sizeAttenuation:true, map: STAR_TEX,
+      blending: THREE.AdditiveBlending, depthWrite:false
+    }));
+  }
+  const bar = makeBar(4000);
+  scene.add(bar);
+
+  // Spiral arms: 2 major + 2 minor. Plus red HII regions along arms.
+  function makeGalaxy(count, radius){
+    const pos = new Float32Array(count*3);
+    const col = new Float32Array(count*3);
+    const rng = seededRng(7);
+    const thickness = 600;
+    const windings = 2.2;
+    // 2 major arms + 2 minor arms (offsets in radians)
+    const armOffs = [0, Math.PI, Math.PI*0.5, Math.PI*1.5];
+    const armWeight = [1.0, 1.0, 0.55, 0.55]; // relative density
+
+    for(let i=0;i<count;i++){
+      // Stratified arm assignment by weight
+      let ai = 0, w = rng() * (armWeight[0]+armWeight[1]+armWeight[2]+armWeight[3]);
+      let acc = 0;
+      for(let k=0;k<4;k++){ acc += armWeight[k]; if(w<acc){ ai=k; break; } }
+      // Radial distance: avoid center (bar covers it), peak near middle
+      const r = 3500 + Math.pow(rng(), 0.9) * (radius - 3500);
+      const baseA = armOffs[ai] + (r/radius) * windings * Math.PI * 2;
+      // Arm thickness grows outward
+      const spread = (rng()-0.5) * (0.18 + (r/radius)*0.55);
+      const a = baseA + spread;
+      const y = (rng()-0.5) * thickness * (1 - Math.min(1, r/radius*0.8));
+      pos[i*3]   = Math.cos(a)*r;
+      pos[i*3+1] = y;
+      pos[i*3+2] = Math.sin(a)*r;
+
+      // Colors: inner=yellow, mid=white, outer=blue; occasional red HII region
+      const t = r/radius;
+      let c;
+      if(rng() > 0.985){
+        // Red/pink HII nebula (star-forming regions)
+        c = new THREE.Color().setHSL(0.93 + rng()*0.04, 0.75, 0.6);
+      } else {
+        const hue = 0.08 + t*0.5;
+        c = new THREE.Color().setHSL(hue, 0.55, 0.55 + rng()*0.25);
+      }
+      col[i*3] = c.r; col[i*3+1] = c.g; col[i*3+2] = c.b;
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos,3));
+    g.setAttribute('color',    new THREE.BufferAttribute(col,3));
+    const m = new THREE.PointsMaterial({
+      size: 85, vertexColors:true, transparent:true, opacity:0.9,
+      sizeAttenuation:true, map: STAR_TEX,
+      blending: THREE.AdditiveBlending, depthWrite:false
+    });
+    return new THREE.Points(g, m);
+  }
+  const galaxy = makeGalaxy(28000, 50000);
+  scene.add(galaxy);
+
+  // Diffuse halo — older scattered stars above/below disk
+  function makeHalo(count){
+    const pos = new Float32Array(count*3);
+    const col = new Float32Array(count*3);
+    const rng = seededRng(33);
+    for(let i=0;i<count;i++){
+      const r = Math.pow(rng(), 0.4) * 35000;
+      const theta = rng()*Math.PI*2;
+      const phi = Math.acos(2*rng()-1);
+      pos[i*3]   = r * Math.sin(phi) * Math.cos(theta);
+      pos[i*3+1] = r * Math.cos(phi) * 0.6; // flattened spheroid
+      pos[i*3+2] = r * Math.sin(phi) * Math.sin(theta);
+      const c = new THREE.Color().setHSL(0.08 + rng()*0.05, 0.3, 0.35 + rng()*0.2);
+      col[i*3]=c.r; col[i*3+1]=c.g; col[i*3+2]=c.b;
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos,3));
+    g.setAttribute('color',    new THREE.BufferAttribute(col,3));
+    return new THREE.Points(g, new THREE.PointsMaterial({
+      size: 60, vertexColors:true, transparent:true, opacity:0.5,
+      sizeAttenuation:true, map: STAR_TEX,
+      blending: THREE.AdditiveBlending, depthWrite:false
+    }));
+  }
+  const halo = makeHalo(1800);
+  scene.add(halo);
+
+  // Far background star field (for when zoomed into solar system)
+  function makeBackground(count){
+    const pos = new Float32Array(count*3);
+    const col = new Float32Array(count*3);
+    const rng = seededRng(13);
+    for(let i=0;i<count;i++){
+      const theta = rng()*Math.PI*2;
+      const phi = Math.acos(2*rng()-1);
+      const r = 90000 + rng()*30000;
+      pos[i*3]   = Math.sin(phi)*Math.cos(theta)*r;
+      pos[i*3+1] = Math.cos(phi)*r;
+      pos[i*3+2] = Math.sin(phi)*Math.sin(theta)*r;
+      const c = new THREE.Color().setHSL(0.55+rng()*0.2, 0.3, 0.5+rng()*0.4);
+      col[i*3]=c.r; col[i*3+1]=c.g; col[i*3+2]=c.b;
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos,3));
+    g.setAttribute('color',    new THREE.BufferAttribute(col,3));
+    return new THREE.Points(g, new THREE.PointsMaterial({
+      size:120, vertexColors:true, transparent:true, opacity:0.6,
+      map: STAR_TEX, blending:THREE.AdditiveBlending, depthWrite:false
+    }));
+  }
+  const bgStars = makeBackground(1500);
+  scene.add(bgStars);
+
+  // Sun's galactic orbit (dashed)
+  const sunOrbitPts = [];
+  for(let i=0;i<=360;i++){
+    const a = (i/360)*Math.PI*2;
+    sunOrbitPts.push(new THREE.Vector3(Math.cos(a)*R_GAL, 0, Math.sin(a)*R_GAL));
+  }
+  const sunOrbitGeom = new THREE.BufferGeometry().setFromPoints(sunOrbitPts);
+  const sunOrbitLine = new THREE.Line(sunOrbitGeom, new THREE.LineDashedMaterial({
+    color:0xffaa00, transparent:true, opacity:0.4, dashSize:300, gapSize:500
+  }));
+  sunOrbitLine.computeLineDistances();
+  scene.add(sunOrbitLine);
+
+  // Radius line (GC -> Sun)
+  const radiusGeom = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(0,0,0), new THREE.Vector3(R_GAL,0,0)
+  ]);
+  const radiusLine = new THREE.Line(radiusGeom, new THREE.LineBasicMaterial({
+    color:0x5aa0ff, transparent:true, opacity:0.5
+  }));
+  radiusLine.visible = false;
+  scene.add(radiusLine);
+
+  // Sun trail (past positions along orbit)
+  const TRAIL_N = 240;
+  const trailPos = new Float32Array(TRAIL_N*3);
+  const trailGeom = new THREE.BufferGeometry();
+  trailGeom.setAttribute('position', new THREE.BufferAttribute(trailPos,3));
+  const trailLine = new THREE.Line(trailGeom, new THREE.LineBasicMaterial({
+    color:0xffaa00, transparent:true, opacity:0.55
+  }));
+  scene.add(trailLine);
+
+  // ============================================================
+  // SUN GROUP (follows sun's galactic position)
+  // ============================================================
+  const sunGroup = new THREE.Group();
+  scene.add(sunGroup);
+
+  // Sun marker at galactic scale: a small bright point sprite (no hard sphere)
+  // Scales naturally with perspective — looks like a star at galactic view,
+  // fades out when camera enters solar system range.
+  const sunHalo = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: STAR_TEX, color:0xfff0a0, transparent:true, opacity:1,
+    blending: THREE.AdditiveBlending, depthWrite:false
+  }));
+  sunHalo.scale.set(350, 350, 1);
+  sunGroup.add(sunHalo);
+
+  // Solar system group (tilted ecliptic)
+  const solarGroup = new THREE.Group();
+  solarGroup.rotation.z = ECLIPTIC_TILT;
+  sunGroup.add(solarGroup);
+
+  // Sun ball (visible when zoomed in)
+  const sunBall = new THREE.Mesh(
+    new THREE.SphereGeometry(0.15 * SOLAR_VIS_SCALE, 32, 24),
+    new THREE.MeshBasicMaterial({ color:0xffcc33 })
+  );
+  solarGroup.add(sunBall);
+  const sunBallGlow = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: STAR_TEX, color:0xffdd66, transparent:true, opacity:0.9,
+    blending: THREE.AdditiveBlending, depthWrite:false
+  }));
+  sunBallGlow.scale.set(1.2 * SOLAR_VIS_SCALE, 1.2 * SOLAR_VIS_SCALE, 1);
+  solarGroup.add(sunBallGlow);
+
+  // Planets
+  const planetMeshes = [];
+  const orbitRings = [];
+  PLANETS.forEach(p=>{
+    const r = p.a * SOLAR_VIS_SCALE;
+    const size = p.size * 0.08 * SOLAR_VIS_SCALE;
+    const planet = new THREE.Mesh(
+      new THREE.SphereGeometry(size, 20, 16),
+      new THREE.MeshBasicMaterial({ color:p.color })
+    );
+    solarGroup.add(planet);
+
+    // Orbit ring
+    const pts = [];
+    for(let k=0;k<=128;k++){
+      const a = (k/128)*Math.PI*2;
+      pts.push(new THREE.Vector3(Math.cos(a)*r, 0, Math.sin(a)*r));
+    }
+    const og = new THREE.BufferGeometry().setFromPoints(pts);
+    const ol = new THREE.Line(og, new THREE.LineBasicMaterial({
+      color:p.color, transparent:true, opacity:0.32
+    }));
+    solarGroup.add(ol);
+    orbitRings.push(ol);
+
+    if(p.ring){
+      const ringGeo = new THREE.RingGeometry(size*1.5, size*2.4, 32);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color:0xeed080, side:THREE.DoubleSide, transparent:true, opacity:0.6
+      });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.rotation.x = Math.PI/2.2;
+      planet.add(ring);
+    }
+
+    planetMeshes.push({ mesh:planet, data:p, orbitR:r });
+  });
+
+  // ============================================================
+  // NAMED NEARBY STARS (world positions = sunPos + dir*dist)
+  // ============================================================
+  const starObjects = [];
+  NAMED_STARS.forEach(st=>{
+    // Single sprite per star — per-frame screen-space constant pixel sizing
+    // (see updateLabels) keeps it as a small point dot at every zoom level.
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: STAR_TEX, color:st.color, transparent:true, opacity:1,
+      blending: THREE.AdditiveBlending, depthWrite:false
+    }));
+    sprite.scale.set(0.001, 0.001, 1);  // placeholder; overwritten each frame
+    scene.add(sprite);
+
+    const labelEl = document.createElement('div');
+    labelEl.className = 'label-html label-star';
+    labelEl.textContent = st.name;
+    const hex = '#' + st.color.toString(16).padStart(6,'0');
+    labelEl.style.color = hex;
+    document.body.appendChild(labelEl);
+
+    starObjects.push({ data:st, mesh:sprite, label:labelEl });
+  });
+
+  // Arm / region labels
+  const armObjects = ARM_LABELS.map(a=>{
+    const el = document.createElement('div');
+    el.className = 'label-html label-arm';
+    el.textContent = a.name;
+    el.style.color = a.color;
+    document.body.appendChild(el);
+    return { data:a, el, pos: new THREE.Vector3(...a.pos) };
+  });
+
+  // Planet labels
+  const planetLabels = PLANETS.map(p=>{
+    const el = document.createElement('div');
+    el.className = 'label-html label-planet';
+    el.textContent = p.name;
+    const r = (p.color>>16)&0xff, g=(p.color>>8)&0xff, b=p.color&0xff;
+    el.style.color = `rgb(${r},${g},${b})`;
+    document.body.appendChild(el);
+    return el;
+  });
+
+  // Sun label (shown when zoomed mid-range)
+  const sunLabelEl = document.createElement('div');
+  sunLabelEl.className = 'label-html label-sun';
+  sunLabelEl.textContent = '☀ 태양 (우리 태양계)';
+  document.body.appendChild(sunLabelEl);
+
+  // ============================================================
+  // HELIX TRAIL (Earth's corkscrew path through galaxy)
+  // ============================================================
+  const HELIX_N = 400;
+  const helixPos = new Float32Array(HELIX_N*3);
+  const helixGeom = new THREE.BufferGeometry();
+  helixGeom.setAttribute('position', new THREE.BufferAttribute(helixPos,3));
+  const helixLine = new THREE.Line(helixGeom, new THREE.LineBasicMaterial({
+    color:0x4a9aff, transparent:true, opacity:0.75
+  }));
+  scene.add(helixLine);
+
+  function updateHelix(){
+    const sunPos = getSunPos(state.time);
+    // Tangent to orbit
+    const a = OMEGA_GAL * state.time;
+    const tangent = new THREE.Vector3(-Math.sin(a), 0, Math.cos(a));
+    const up = new THREE.Vector3(0, 1, 0);
+    // Tilt helix plane by ecliptic tilt
+    const normal = up.clone().applyAxisAngle(tangent, ECLIPTIC_TILT);
+    const binormal = new THREE.Vector3().crossVectors(normal, tangent).normalize();
+
+    // Conceptual: show 12 years of Earth's path. Use visually stretched pitch.
+    const years = 12;
+    const pitchLy = 0.06;       // visual pitch per year (compressed from real ~0.00077 ly/yr)
+    const earthR = 1.0 * SOLAR_VIS_SCALE;  // Earth orbit radius visual
+
+    for(let i=0;i<HELIX_N;i++){
+      const t = -(i/(HELIX_N-1)) * years; // 0 .. -years
+      const axis = t * pitchLy;
+      const phase = -t * Math.PI * 2; // 1 cycle per year
+      const cs = Math.cos(phase), sn = Math.sin(phase);
+      helixPos[i*3]   = sunPos.x + tangent.x * axis + (binormal.x * cs + normal.x * sn) * earthR;
+      helixPos[i*3+1] = sunPos.y + tangent.y * axis + (binormal.y * cs + normal.y * sn) * earthR;
+      helixPos[i*3+2] = sunPos.z + tangent.z * axis + (binormal.z * cs + normal.z * sn) * earthR;
+    }
+    helixGeom.attributes.position.needsUpdate = true;
+  }
+
+  // ============================================================
+  // HELPERS
+  // ============================================================
+  function getSunPos(t){
+    const a = OMEGA_GAL * t;
+    return new THREE.Vector3(Math.cos(a)*R_GAL, 0, Math.sin(a)*R_GAL);
+  }
+
+  function updateSunTrail(){
+    const span = GAL_PERIOD * 0.28;
+    for(let i=0;i<TRAIL_N;i++){
+      const t = state.time - (i/(TRAIL_N-1))*span;
+      const p = getSunPos(t);
+      trailPos[i*3]=p.x; trailPos[i*3+1]=p.y; trailPos[i*3+2]=p.z;
+    }
+    trailGeom.attributes.position.needsUpdate = true;
+  }
+
+  function updateSunPosition(){
+    const p = getSunPos(state.time);
+    sunGroup.position.copy(p);
+    // Orient sunGroup so +x points along velocity (tangent)
+    const a = OMEGA_GAL * state.time;
+    const tan = new THREE.Vector3(-Math.sin(a), 0, Math.cos(a));
+    const lookPt = p.clone().add(tan);
+    sunGroup.lookAt(lookPt);
+    // radius line
+    radiusGeom.setAttribute('position',
+      new THREE.BufferAttribute(new Float32Array([0,0,0,p.x,p.y,p.z]), 3));
+  }
+
+  // ============================================================
+  // UI: ERA BUTTONS
+  // ============================================================
+  const eraGrid = document.getElementById('eraGrid');
+  ERAS.forEach(era=>{
+    const btn = document.createElement('button');
+    btn.className = 'era-btn' + (era.id==='now'?' active':'');
+    btn.textContent = era.label;
+    btn.title = era.desc;
+    btn.dataset.era = era.id;
+    btn.addEventListener('click', ()=> goToEra(era.id));
+    eraGrid.appendChild(btn);
+  });
+
+  // Deep-time era buttons (show scale + orbit count)
+  const deepEraList = document.getElementById('deepEraList');
+  // Korean: 1억 = 10^8. Format e.g. 3800000000 → "38억 년 전", 4540000000 → "45.4억 년 전"
+  function fmtEok(y){
+    const eok = y / 1e8;
+    return eok.toFixed(1).replace(/\.0$/,'') + '억 년 전';
+  }
+  ERAS_DEEP.forEach(era=>{
+    const btn = document.createElement('button');
+    btn.className = 'deep-era-btn';
+    btn.dataset.era = era.id;
+    btn.title = era.desc;
+    const orbits = era.yearsAgo / GAL_PERIOD;
+    btn.innerHTML = `
+      <span class="deep-era-label">${era.label}</span>
+      <span class="deep-era-meta">
+        ${fmtEok(era.yearsAgo)}<br>
+        <span class="orbits">공전 ${orbits.toFixed(2)}회</span>
+      </span>`;
+    btn.addEventListener('click', ()=> goToEra(era.id));
+    deepEraList.appendChild(btn);
+  });
+
+  function setActiveEra(id){
+    state.currentEra = id;
+    document.querySelectorAll('.era-btn[data-era], .deep-era-btn[data-era]').forEach(b=>{
+      b.classList.toggle('active', b.dataset.era===id);
+    });
+  }
+
+  let tween=null;
+  function animateTimeTo(newT, dur){
+    const t0=state.time, at=performance.now();
+    const wasPlaying = state.playing;
+    state.playing = false;
+    playBtn.textContent = '▶';
+    tween = { update(now){
+      const u = Math.min(1, (now-at)/dur);
+      const e = easeIO(u);
+      state.time = t0 + (newT - t0)*e;
+      syncUI();
+      if(u>=1){ tween=null; }
+    }};
+  }
+  function easeIO(t){ return t<0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2; }
+
+  function goToEra(id){
+    const era = ERAS.find(e=>e.id===id) || ERAS_DEEP.find(e=>e.id===id);
+    if(!era) return;
+    setActiveEra(id);
+    animateTimeTo(-era.yearsAgo, 1400);
+  }
+
+  // Play/pause
+  const playBtn = document.getElementById('playBtn');
+  playBtn.addEventListener('click', ()=>{
+    state.playing = !state.playing;
+    playBtn.textContent = state.playing ? '⏸' : '▶';
+  });
+  const speedSel = document.getElementById('speedSel');
+  speedSel.addEventListener('change', e=>{ state.speed = +e.target.value; });
+
+  // Timeline slider
+  const timeSlider = document.getElementById('timeSlider');
+  timeSlider.addEventListener('input', e=>{
+    state.time = +e.target.value;
+    state.playing = false;
+    playBtn.textContent = '▶';
+    setActiveEra(null);
+    syncUI();
+  });
+
+  // Toggles
+  function bindToggle(id, key, onChange){
+    const el = document.getElementById(id);
+    el.checked = state[key];
+    el.addEventListener('change', e=>{
+      state[key] = e.target.checked;
+      if(onChange) onChange(state[key]);
+    });
+  }
+  bindToggle('tglOrbits','showOrbits', v=>orbitRings.forEach(o=>o.visible=v));
+  bindToggle('tglHelix','showHelix',   v=>helixLine.visible=v);
+  bindToggle('tglLabels','showLabels');
+  bindToggle('tglRadius','showRadius', v=>radiusLine.visible=v);
+  bindToggle('tglSunOrbit','showSunOrbit', v=>{ sunOrbitLine.visible=v; trailLine.visible=v; });
+
+  // Camera views
+  let camTween=null;
+  function tweenCamera(newTarget, newRadius, newTheta, newPhi, dur){
+    const t0=target.clone(), r0=sph.radius;
+    const th0=sph.theta, ph0=sph.phi;
+    const at=performance.now();
+    camTween = { update(now){
+      const u = Math.min(1,(now-at)/dur);
+      const e = easeIO(u);
+      target.copy(t0).lerp(newTarget, e);
+      sph.radius = r0 * Math.pow(newRadius / r0, e);
+      sph.theta = th0 + (newTheta - th0) * e;
+      sph.phi   = ph0 + (newPhi   - ph0) * e;
+      applyCam();
+      if(u>=1){ camTween=null; }
+    }};
+  }
+
+  document.getElementById('viewGalaxy').addEventListener('click', ()=>{
+    state.viewMode = 'galaxy';
+    tweenCamera(new THREE.Vector3(0,0,0), 90000, -1.0, 0.45, 1600);
+  });
+  document.getElementById('viewSolar').addEventListener('click', ()=>{
+    state.viewMode = 'solar';
+    const sunP = getSunPos(state.time);
+    tweenCamera(sunP, 1.5, -1.0, 1.2, 1600);
+  });
+
+  // ============================================================
+  // UI SYNC
+  // ============================================================
+  function syncUI(){
+    // Slider only covers post-Cambrian range; clamp for display only.
+    timeSlider.value = Math.max(TIME_SLIDER_MIN, Math.min(100000000, state.time));
+    const yrsAgo = -state.time;
+    let txt;
+    const absY = Math.abs(yrsAgo);
+    if(absY < 10) txt = '현재';
+    else if(absY < 1000) txt = fmtSigned(yrsAgo, '년 전', '년 후', 0);
+    else if(absY < 1e6)  txt = fmtSigned(yrsAgo/1000, '천 년 전', '천 년 후', 1);
+    else if(absY < 1e9)  txt = fmtSigned(yrsAgo/1e6, '백만 년 전', '백만 년 후', 1);
+    else                 txt = fmtSigned(yrsAgo/1e9, '십억 년 전', '십억 년 후', 2);
+    document.getElementById('hudTime').textContent = txt;
+    document.getElementById('tlTime').textContent = txt;
+
+    const orbits = state.time / GAL_PERIOD;
+    const orbitsAbs = Math.abs(orbits);
+    document.getElementById('hudOrbits').textContent = (orbits>=0?'+':'')+orbits.toFixed(2)+' 회';
+    document.getElementById('tlOrbits').textContent  = orbitsAbs.toFixed(2);
+
+    let angle = (state.time * OMEGA_GAL * 180/Math.PI) % 360;
+    if(angle<0) angle += 360;
+    document.getElementById('hudAngle').textContent = angle.toFixed(1)+'°';
+
+    // Distance traveled: v * |t|
+    const km = Math.abs(state.time) * 3.156e7 * 230;
+    const ly = km / 9.461e12;
+    document.getElementById('tlDist').textContent = fmtLy(ly);
+  }
+  function fmtSigned(v, past, future, dec){
+    const a = Math.abs(v);
+    return a.toFixed(dec) + ' ' + (v>=0 ? past : future);
+  }
+  function fmtLy(v){
+    if(v<1) return v.toFixed(3)+' ly';
+    if(v<1000) return v.toFixed(0)+' ly';
+    if(v<1e6) return (v/1000).toFixed(1)+' k ly';
+    return (v/1e6).toFixed(2)+' M ly';
+  }
+
+  // ============================================================
+  // PROJECTION / LABELS
+  // ============================================================
+  const _v = new THREE.Vector3();
+  function project(pos){
+    _v.copy(pos).project(camera);
+    return {
+      x: (_v.x*0.5 + 0.5) * window.innerWidth,
+      y: (-_v.y*0.5 + 0.5) * window.innerHeight,
+      visible: _v.z > -1 && _v.z < 1 && _v.x>-1.2 && _v.x<1.2 && _v.y>-1.2 && _v.y<1.2
+    };
+  }
+  function setLabel(el, p, opacity, xOffset=10){
+    if(!p.visible || opacity < 0.1){ el.style.display='none'; return; }
+    el.style.display='block';
+    el.style.left = p.x + 'px';
+    el.style.top  = p.y + 'px';
+    el.style.opacity = opacity;
+    el.style.transform = `translate(${xOffset}px, -50%)`;
+  }
+
+  function updateLabels(){
+    const camDistSun = camera.position.distanceTo(sunGroup.position);
+
+    // Named stars: fade in when camera is within 4000 ly of sun
+    let starOp = 0;
+    if(state.showLabels){
+      starOp = THREE.MathUtils.clamp((4000 - camDistSun)/2500, 0, 1);
+    }
+    const fovRad = camera.fov * Math.PI / 180;
+    const H = window.innerHeight;
+    const tanHalfFov = Math.tan(fovRad / 2);
+    // Match sun's pixel sizing curve so named stars look like siblings of the sun
+    let basePx;
+    if(camDistSun > 10000)     basePx = 55;
+    else if(camDistSun > 1000) basePx = 45;
+    else if(camDistSun > 100)  basePx = 35;
+    else                        basePx = 30;
+    starObjects.forEach(so=>{
+      const worldPos = sunGroup.position.clone().addScaledVector(so.data.dir, so.data.dist);
+      so.mesh.position.copy(worldPos);
+      // Screen-space constant pixel sizing — same scheme as the sun, clusters/nebulae bigger
+      const distToCam = camera.position.distanceTo(worldPos);
+      const targetPx = so.data.cluster ? basePx * 1.6 : basePx;
+      const w = Math.max(1e-4, targetPx * distToCam * 2 * tanHalfFov / H);
+      so.mesh.scale.set(w, w, 1);
+      const p = project(worldPos);
+      setLabel(so.label, p, starOp, 10);
+    });
+
+    // Arm labels: visible only when zoomed out (camera far from target)
+    let armOp = 0;
+    if(state.showLabels){
+      armOp = THREE.MathUtils.clamp((sph.radius - 8000)/20000, 0, 0.85);
+    }
+    armObjects.forEach(ao=>{
+      const p = project(ao.pos);
+      setLabel(ao.el, p, armOp, -50);
+      if(ao.el.style.display==='block'){
+        ao.el.style.transform = 'translate(-50%, -50%)';
+      }
+    });
+
+    // Sun label: visible when camera is close enough to see sun as object (mid-range)
+    const sunLabelOp = state.showLabels
+      ? THREE.MathUtils.clamp((6000 - camDistSun)/2000, 0, 1) * THREE.MathUtils.clamp((camDistSun - 1.0)/2.0, 0, 1)
+      : 0;
+    const pSun = project(sunGroup.position);
+    setLabel(sunLabelEl, pSun, sunLabelOp, 14);
+
+    // Planet labels: visible when camera very close (< 3 ly)
+    const planetOp = state.showLabels
+      ? THREE.MathUtils.clamp((3 - camDistSun)/2.5, 0, 1)
+      : 0;
+    planetMeshes.forEach((pm, i)=>{
+      const w = new THREE.Vector3();
+      pm.mesh.getWorldPosition(w);
+      const p = project(w);
+      setLabel(planetLabels[i], p, planetOp, 8);
+    });
+  }
+
+  // ============================================================
+  // DYNAMIC VISIBILITY / SCALE
+  // ============================================================
+  function updateScaleVisibility(){
+    const camDistSun = camera.position.distanceTo(sunGroup.position);
+
+    // Solar system visible when camera close to sun (< 8 ly)
+    const showSolar = camDistSun < 8;
+    solarGroup.visible = showSolar;
+
+    // Sun halo: screen-space constant pixel size so it looks like a consistent
+    // bright star regardless of zoom, then fades out when entering solar system.
+    let haloOp;
+    if(camDistSun > 30)      haloOp = 1.0;
+    else if(camDistSun > 3)  haloOp = (camDistSun - 3)/27;
+    else                      haloOp = 0;
+    sunHalo.material.opacity = haloOp;
+    sunHalo.visible = haloOp > 0.01;
+    if(sunHalo.visible){
+      const fovRad = camera.fov * Math.PI / 180;
+      const pxToWorld = (px) => px * camDistSun * 2 * Math.tan(fovRad/2) / window.innerHeight;
+      // Target pixel size varies a bit with range so the sun is a clear but not
+      // overwhelming point at galactic view, a visible star nearby.
+      let px;
+      if(camDistSun > 10000)     px = 55;
+      else if(camDistSun > 1000) px = 45;
+      else if(camDistSun > 100)  px = 35;
+      else                        px = 30;
+      const w = pxToWorld(px);
+      sunHalo.scale.set(w, w, 1);
+    }
+
+    // Galaxy / center dim when we're zoomed deep into solar system
+    const galOp = THREE.MathUtils.clamp(sph.radius/1000, 0.2, 1);
+    galaxy.material.opacity = 0.9 * galOp;
+    bar.material.opacity = 0.85 * galOp;
+    halo.material.opacity = 0.5 * galOp;
+    bulgeOuter.material.opacity = 0.45 * galOp;
+    bulgeInner.material.opacity = 0.9 * galOp;
+    sgrA.material.opacity = galOp;
+    bgStars.material.opacity = 0.6;
+
+    // HUD
+    document.getElementById('hudCam').textContent = fmtLy(sph.radius);
+    let viewName = '은하';
+    if(camDistSun < 2) viewName = '태양계';
+    else if(camDistSun < 4000) viewName = '태양 이웃';
+    document.getElementById('hudView').textContent = viewName;
+  }
+
+  // ============================================================
+  // HOVER TOOLTIP
+  // ============================================================
+  const tooltip = document.getElementById('tooltip');
+  function handleHover(e){
+    const mx=e.clientX, my=e.clientY;
+    let best = 26, found = null;
+
+    starObjects.forEach(so=>{
+      const w = sunGroup.position.clone().addScaledVector(so.data.dir, so.data.dist);
+      const p = project(w);
+      if(!p.visible) return;
+      const d = Math.hypot(p.x-mx, p.y-my);
+      if(d<best){ best=d; found={ name:so.data.name, meta:`${so.data.dist} ly · ${so.data.type}` }; }
+    });
+
+    planetMeshes.forEach(pm=>{
+      const w = new THREE.Vector3();
+      pm.mesh.getWorldPosition(w);
+      const p = project(w);
+      if(!p.visible) return;
+      const d = Math.hypot(p.x-mx, p.y-my);
+      if(d<best){
+        best=d;
+        found={
+          name: pm.data.name,
+          meta: `${pm.data.nameEn} · ${pm.data.a} AU · 공전 ${pm.data.period} 년`
+        };
+      }
+    });
+
+    // Sun
+    {
+      const p = project(sunGroup.position);
+      if(p.visible){
+        const d = Math.hypot(p.x-mx, p.y-my);
+        if(d<best){
+          best=d;
+          found={ name:'☀ 태양 (Sol)', meta:`G2V · 지구로부터 중심 · 은하 중심까지 26,700 ly` };
+        }
+      }
+    }
+
+    if(found){
+      tooltip.innerHTML = `<div class="tooltip-name">${found.name}</div><div class="tooltip-meta">${found.meta}</div>`;
+      tooltip.style.display='block';
+      tooltip.style.left = (mx+14)+'px';
+      tooltip.style.top  = (my+14)+'px';
+    } else {
+      tooltip.style.display='none';
+    }
+  }
+
+  // ============================================================
+  // ANIMATION LOOP
+  // ============================================================
+  let last = performance.now();
+  function animate(now){
+    requestAnimationFrame(animate);
+    const dt = Math.min(0.05, (now - last)/1000);
+    last = now;
+
+    if(tween) tween.update(now);
+    if(camTween) camTween.update(now);
+
+    if(state.playing && !tween){
+      state.time += dt * state.speed;
+      state.time = Math.max(-4.6e9, Math.min(1e8, state.time));
+      syncUI();
+    }
+
+    // Always keep sunGroup at current sun position
+    updateSunPosition();
+    updateSunTrail();
+    if(state.showHelix) updateHelix();
+
+    // Planets: orbit at visual speed (not tied to state.time so motion is always visible)
+    const orbitT = now / 1000;
+    const visSpeedMul = 0.12;
+    planetMeshes.forEach(pm=>{
+      const p = pm.data;
+      const phase = (orbitT / p.period) * Math.PI * 2 * visSpeedMul * 12;
+      pm.mesh.position.set(
+        Math.cos(phase) * pm.orbitR,
+        0,
+        Math.sin(phase) * pm.orbitR
+      );
+    });
+
+    updateScaleVisibility();
+    updateLabels();
+
+    renderer.render(scene, camera);
+  }
+
+  // Initial sync + hide loading
+  updateSunPosition();
+  updateSunTrail();
+  updateHelix();
+  syncUI();
+
+  // Intro: start from far galaxy view, zoom in to sun mid-range
+  target.set(0,0,0);
+  sph.radius = 130000;
+  sph.theta = -0.8;
+  sph.phi = 0.35;
+  applyCam();
+  document.getElementById('loading').style.display = 'none';
+
+  setTimeout(()=>{
+    // Zoom to sun region over 4s
+    tweenCamera(getSunPos(0), 250, -1.0, 0.9, 4200);
+    state.viewMode = 'solar';
+  }, 400);
+
+  window.addEventListener('resize', ()=>{
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  requestAnimationFrame(animate);
+})();
+</script>
+</body>
+</html>
